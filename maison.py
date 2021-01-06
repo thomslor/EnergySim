@@ -16,20 +16,20 @@ if __name__ == "__main__":
     try:
         mqmarket = sysv_ipc.MessageQueue(keyMarket)
     except ExistentialError:
-        print("Message queue", keyMarket, "already exsits, terminating.")
+        print("Cannot connect to MQ", keyMarket)
         sys.exit(1)
 
     try:
-        mqhome = sysv_ipc.MessageQueue(keyHome, sysv_ipc.IPC_CREX)
+        mqhome = sysv_ipc.MessageQueue(keyHome)
     except ExistentialError:
-        print("Message queue", keyHome, "already exsits, terminating.")
+        print("Cannot connect to MQ", keyHome)
         sys.exit(1)
 
 
 
     if ConsoRate > InitProd:
         Quantity = ConsoRate - InitProd
-        m1 = str(pid), ",", str(Quantity)
+        m1 = "%d,%d" % (pid, Quantity)
         m2 = m1.encode()
         mqhome.send(m2)
 
@@ -38,7 +38,9 @@ if __name__ == "__main__":
     elif ConsoRate < InitProd:
         if SalePol == 0:
             m, t = mqhome.receive()
-            print(t)
+            m = m.decode()
+            pidm, quantitym = m.split(",")
+            print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
             """
         elif SalePol == 1:
             #Envoyer Message dans MQ vers Market
