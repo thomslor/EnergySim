@@ -1,6 +1,6 @@
 import sys
 import sysv_ipc
-#import multiprocessing
+# import multiprocessing
 import threading
 
 key = 999
@@ -10,7 +10,9 @@ def changeStock(mq, msg, pid, mutex):
     print("Starting thread:", threading.current_thread().name)
     global stock
     msg = msg.decode()
-    type, value = (int)(msg.split(","))
+    print("msg is ", msg)
+    type, value = msg.split(",")
+    type, value = int(type), int(value)
     if type == 1:  # Home wants to sell
         mutex.acquire()
         stock = stock + value
@@ -21,6 +23,7 @@ def changeStock(mq, msg, pid, mutex):
         stock = stock - value
         mutex.release()
     mq.send(b"", type=pid)  # Send an ACK
+    print("stock is ", str(stock))
     print("Ending thread:", threading.current_thread().name)
 
 if __name__ == "__main__":
@@ -46,3 +49,5 @@ if __name__ == "__main__":
         p.start()
         p.join()
         mqMarket.remove()
+        mqHome.remove()
+        break

@@ -58,10 +58,14 @@ if __name__ == "__main__":
 
         elif SalePol == 1:
             #Envoyer Message dans MQ vers Market
+            print("Here\n")
             m = "1,%d" % surplus
+            print("m is ", m, "\n")
             m = m.encode()
             mqmarket.send(m, type=pid)
             m, t = mqmarket.receive(type=pid)
+            print("m2 is ", m, "\n")
+
 """
         elif SalePol == 2:
             #Attendre Demande pendant X sec, si pas de réponse alors envoyer
