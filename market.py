@@ -4,6 +4,7 @@ import sysv_ipc
 import threading
 
 key = 999
+keyHome = 777
 
 def worker(msg, tp, mutex):
     print("Starting thread:", threading.current_thread().name)
@@ -26,6 +27,12 @@ if __name__ == "__main__":
         mq = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREX)
     except ExistentialError:
         print("Message queue", key, "already exsits, terminating.")
+        sys.exit(1)
+
+    try:
+        mqHome = sysv_ipc.MessageQueue(keyHome, sysv_ipc.IPC_CREX)
+    except ExistentialError:
+        print("Message queue", keyHome, "already exist, terminating.")
         sys.exit(1)
 
     threads = []

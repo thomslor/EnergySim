@@ -19,6 +19,7 @@ if __name__ == "__main__":
         print("Cannot connect to MQ", keyMarket)
         sys.exit(1)
 
+
     try:
         mqhome = sysv_ipc.MessageQueue(keyHome)
     except ExistentialError:
@@ -27,21 +28,34 @@ if __name__ == "__main__":
 
 
 
-    if ConsoRate > InitProd:
+    if ConsoRate > InitProd: #Implémenter un boucle pour accéder à retour à la normale (tant que j'ai pas recu le bon message, récupérez des messages)
         Quantity = ConsoRate - InitProd
         m1 = "%d,%d" % (pid, Quantity)
         m2 = m1.encode()
-        mqhome.send(m2)
-
+        mqhome.send(m2, type = 2)
+        rep, t = mqhome.receive(type = 1)
+        pidrep = rep.decode()
+        print(pidrep) #Pose Problème
+        if int(pidrep) == pid:
+            print("Retour à la normale")
+        else:
+            mqhome.send(rep, type = 1)
 
 
     elif ConsoRate < InitProd:
+        surplus = InitProd - ConsoRate
         if SalePol == 0:
-            m, t = mqhome.receive()
-            m = m.decode()
-            pidm, quantitym = m.split(",")
+            m, t = mqhome.receive(type = 2)
+            dem = m.decode()
+            pidm, quantitym = dem.split(",")
             print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
-            """
+            quantitym = int(quantitym)
+            if surplus >= quantitym:
+                print(pidm.encode())
+                mqhome.send(pidm.encode(), type = 1)
+            else:
+                mqhome.send(m)
+
         elif SalePol == 1:
             #Envoyer Message dans MQ vers Market
         elif SalePol == 2:
