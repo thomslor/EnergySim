@@ -66,7 +66,7 @@ if __name__ == "__main__":
     while True:
         while True:
             try:
-                msg, tp = mqMarket.receive(type=1 or 2)
+                msg, tp = mqMarket.receive(type=1 or 2, block=False)
                 print(msg)
                 p = threading.Thread(target=changeStock, args=(mqMarket, msg, tp, lock))
                 p.start()
