@@ -53,21 +53,32 @@ if __name__ == "__main__":
 
     try:
         mqMarket = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREX)
-    except ExistentialError:
+    except sysv_ipc.ExistentialError:
         print("Message queue", key, "already exist, terminating.")
         sys.exit(1)
 
     try:
         mqHome = sysv_ipc.MessageQueue(keyHome, sysv_ipc.IPC_CREX)
-    except ExistentialError:
+    except sysv_ipc.ExistentialError:
         print("Message queue", keyHome, "already exist, terminating.")
         sys.exit(1)
 
     while True:
-        msg, pid = mqMarket.receive()
-        p = threading.Thread(target=changeStock, args=(mqMarket, msg, pid, lock))
-        p.start()
-        p.join()
-        mqMarket.remove()
-        mqHome.remove()
-        break
+        while True:
+            try:
+                msg, tp = mqMarket.receive(type=1 or 2)
+                print(msg)
+                p = threading.Thread(target=changeStock, args=(mqMarket, msg, tp, lock))
+                p.start()
+                p.join()
+                price = 0.9 * price + (0.2 * war + 0.5 * tension + 0.5 * carbon + 0.5 * crisis)  # random coeff
+                print("The current price is ", str(price))
+                break
+            except sysv_ipc.BusyError:
+                pass
+                # print("What the hell")
+
+                """
+                mqMarket.remove()
+                mqHome.remove()
+                """

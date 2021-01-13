@@ -1,74 +1,115 @@
 import sys
 import os
 import sysv_ipc
+import multiprocessing
+import random
+import time
 
 
 keyMarket = 999
 keyHome = 777
 
-if __name__ == "__main__":
+def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
 
-    InitProd = int(sys.argv[1])
-    ConsoRate = int(sys.argv[2])
-    SalePol = int(sys.argv[3]) # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
     pid = os.getpid()
+    print("Maison ", pid,"\nConsommation : ", ConsoRate,"\nProduction : ",InitProd, "\n")
 
+    b.wait()
+
+    if ConsoRate > InitProd:  # Implémenter un boucle pour accéder à retour à la normale (tant que j'ai pas recu le bon message, récupérez des messages)
+            Quantity = ConsoRate - InitProd
+            m1 = "%d,%d" % (pid, Quantity)
+            m2 = m1.encode()
+            mqhome.send(m2, type=2)
+            try:
+                rep, t = mqhome.receive(type=pid)
+                print(rep.decode())
+            except sysv_ipc.BusyError:
+                m = "2,%d" % Quantity
+                m = m.encode()
+                mqmarket.send(m, type=pid)
+                m, t = mqmarket.receive(type=pid)
+                print("m2 is ", m, "\n")
+
+
+    elif ConsoRate < InitProd:
+            surplus = InitProd - ConsoRate
+            if SalePol == 0:
+                m, t = mqhome.receive(type=2)
+                dem = m.decode()
+                pidm, quantitym = dem.split(",")
+                print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
+                quantitym = int(quantitym)
+                if surplus >= quantitym:
+                    mqhome.send(pidm.encode(), type=int(pidm))
+                    surplus -= quantitym
+                else:
+                    mqhome.send(m)
+
+            elif SalePol == 1:
+                # Envoyer Message dans MQ vers Market
+                m = "%d,%d" % (pid, surplus)
+                print("send is ", m, "\n")
+                m = m.encode()
+                print(pid)
+                mqmarket.send(m, type=1)
+                msg, t = mqmarket.receive(type=pid)
+                print("response is ", msg, "\n")
+
+
+            elif SalePol == 2:
+                try:
+                    m, t = mqhome.receive(block=False, type=2)
+                    dem = m.decode()
+                    pidm, quantitym = dem.split(",")
+                    print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
+                    quantitym = int(quantitym)
+                    if surplus >= quantitym:
+                        print(pidm.encode())
+                        mqhome.send(pidm.encode(), type=1)
+                    else:
+                        mqhome.send(m)
+                except sysv_ipc.BusyError:
+                    m = "%d,%d" % (pid, surplus)
+                    print("send is ", m, "\n")
+                    m = m.encode()
+                    print(pid)
+                    mqmarket.send(m, type=1)
+                    msg, t = mqmarket.receive(type=pid)
+                    print("response is ", msg, "\n")
+
+
+
+if __name__ == "__main__":
     try:
         mqmarket = sysv_ipc.MessageQueue(keyMarket)
-    except ExistentialError:
+    except sysv_ipc.ExistentialError:
         print("Cannot connect to MQ", keyMarket)
         sys.exit(1)
 
 
     try:
         mqhome = sysv_ipc.MessageQueue(keyHome)
-    except ExistentialError:
+    except sysv_ipc.ExistentialError:
         print("Cannot connect to MQ", keyHome)
         sys.exit(1)
 
+    nMaison = int(sys.argv[1])
+    b = multiprocessing.Barrier(nMaison)
+
+    for x in range(nMaison):
+        InitProd = random.randrange(100, 1000, 100)
+        ConsoRate = random.randrange(100, 1000, 100)
+        SalePol = 0 #random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
+        p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
+        p.start()
 
 
-    if ConsoRate > InitProd: #Implémenter un boucle pour accéder à retour à la normale (tant que j'ai pas recu le bon message, récupérez des messages)
-        Quantity = ConsoRate - InitProd
-        m1 = "%d,%d" % (pid, Quantity)
-        m2 = m1.encode()
-        mqhome.send(m2, type = 2)
-        rep, t = mqhome.receive(type = 1)
-        pidrep = rep.decode()
-        print(pidrep) #Pose Problème
-        if int(pidrep) == pid:
-            print("Retour à la normale")
-        else:
-            mqhome.send(rep, type = 1)
 
 
-    elif ConsoRate < InitProd:
-        surplus = InitProd - ConsoRate
-        if SalePol == 0:
-            m, t = mqhome.receive(type = 2)
-            dem = m.decode()
-            pidm, quantitym = dem.split(",")
-            print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
-            quantitym = int(quantitym)
-            if surplus >= quantitym:
-                print(pidm.encode())
-                mqhome.send(pidm.encode(), type = 1)
-            else:
-                mqhome.send(m)
 
-        elif SalePol == 1:
-            #Envoyer Message dans MQ vers Market
-            print("Here\n")
-            m = "1,%d" % surplus
-            print("m is ", m, "\n")
-            m = m.encode()
-            mqmarket.send(m, type=pid)
-            m, t = mqmarket.receive(type=pid)
-            print("m2 is ", m, "\n")
 
-"""
-        elif SalePol == 2:
-            #Attendre Demande pendant X sec, si pas de réponse alors envoyer
-"""
+
+
 
 
