@@ -11,25 +11,31 @@ keyHome = 777
 
 def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
 
-    pid = os.getpid()
-    print("Maison ", pid,"\nConsommation : ", ConsoRate,"\nProduction : ",InitProd, "\n")
-
     b.wait()
+
+    pid = os.getpid()
+    print("Maison ", pid," | Consommation : ", ConsoRate," | Production : ",InitProd, "\n")
+
+
 
     if ConsoRate > InitProd:  # Implémenter un boucle pour accéder à retour à la normale (tant que j'ai pas recu le bon message, récupérez des messages)
             Quantity = ConsoRate - InitProd
+            """
             m1 = "%d,%d" % (pid, Quantity)
             m2 = m1.encode()
             mqhome.send(m2, type=2)
+           
             try:
                 rep, t = mqhome.receive(type=pid)
                 print(rep.decode())
             except sysv_ipc.BusyError:
-                m = "2,%d" % Quantity
-                m = m.encode()
-                mqmarket.send(m, type=pid)
-                m, t = mqmarket.receive(type=pid)
-                print("m2 is ", m, "\n")
+               """
+            m = "%d,%d" % (pid, -Quantity)
+            m = m.encode()
+            mqmarket.send(m, type=1)
+            m, t = mqmarket.receive(type=pid)
+            print("m2 is ", m, "\n")
+
 
 
     elif ConsoRate < InitProd:
@@ -78,6 +84,8 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
                     msg, t = mqmarket.receive(type=pid)
                     print("response is ", msg, "\n")
 
+    # maison(random.randrange(100, 1000, 100), random.randrange(100, 1000, 100), SalePol, mqhome, mqmarket)
+
 
 
 if __name__ == "__main__":
@@ -98,8 +106,8 @@ if __name__ == "__main__":
     b = multiprocessing.Barrier(nMaison)
 
     for x in range(nMaison):
-        InitProd = random.randrange(100, 1000, 100)
-        ConsoRate = random.randrange(100, 1000, 100)
+        InitProd = 200# random.randrange(100, 1000, 100)
+        ConsoRate = 400#random.randrange(100, 1000, 100)
         SalePol = random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()

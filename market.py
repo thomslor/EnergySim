@@ -28,14 +28,14 @@ def changeStock(mq, msg, tp, mutex):
     print("msg is ", msg)
     pid, value = msg.split(",")
     pid, value = int(pid), int(value)
-    if tp == 1:  # Home wants to sell
+    if value>0:  # Home wants to sell
         mutex.acquire()
         stock = stock + value
         mutex.release()
-    elif tp == 2:  # Home wants to buy
+    elif value<0:  # Home wants to buy
         # if stock < value: wait()
         mutex.acquire()
-        stock = stock - value
+        stock = stock + value
         mutex.release()
     mq.send(b"", type=pid)  # Send an ACK
     print("stock is ", str(stock))
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGUSR2, handler)
     signal.signal(signal.SIGILL, handler)
     signal.signal(signal.SIGPIPE, handler)
-    price, stock, war, tension, carbon, crisis = 1, 0, 0, 0, 0, 0
+    price, stock, war, tension, carbon, crisis = 1, 500, 0, 0, 0, 0
     price = 0.9*price + (0.2*war + 0.5*tension + 0.5*carbon + 0.5*crisis)  #random coeff
     lock = threading.Lock()
 
@@ -66,7 +66,7 @@ if __name__ == "__main__":
     while True:
         while True:
             try:
-                msg, tp = mqMarket.receive(type=1 or 2, block=False)
+                msg, tp = mqMarket.receive(type = 1, block=False)
                 print(msg)
                 p = threading.Thread(target=changeStock, args=(mqMarket, msg, tp, lock))
                 p.start()
