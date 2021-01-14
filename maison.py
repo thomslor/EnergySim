@@ -25,7 +25,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
             mqhome.send(m2, type=2)
            
             try:
-                time.sleep(10)
+                time.sleep(1)
                 rep, t = mqhome.receive(type=pid, block=False)
                 print(rep.decode())
             except sysv_ipc.BusyError:
@@ -64,16 +64,17 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
 
             elif SalePol == 2:
                 try:
-                    m, t = mqhome.receive(block=False, type=2)
-                    dem = m.decode()
-                    pidm, quantitym = dem.split(",")
-                    print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
-                    quantitym = int(quantitym)
-                    if surplus >= quantitym:
-                        print(pidm.encode())
-                        mqhome.send(pidm.encode(), type=1)
-                    else:
-                        mqhome.send(m)
+                    while surplus > 0:
+                        m, t = mqhome.receive(block=False, type=2)
+                        dem = m.decode()
+                        pidm, quantitym = dem.split(",")
+                        print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
+                        quantitym = int(quantitym)
+                        if surplus >= quantitym:
+                            print(pidm.encode())
+                            mqhome.send(pidm.encode(), type=1)
+                        else:
+                            mqhome.send(m)
                 except sysv_ipc.BusyError:
                     m = "%d,%d" % (pid, surplus)
                     print("send is ", m, "\n")
@@ -83,7 +84,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
                     msg, t = mqmarket.receive(type=pid)
                     print("response is ", msg, "\n")
 
-    # maison(random.randrange(100, 1000, 100), random.randrange(100, 1000, 100), SalePol, mqhome, mqmarket)
+    maison(random.randrange(100, 1000, 100), random.randrange(100, 1000, 100), SalePol, mqhome, mqmarket)
 
 
 
@@ -110,6 +111,16 @@ if __name__ == "__main__":
         SalePol = random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()
+
+    mqmarket.receive(type=0)
+    print("Marché Down")
+    for x in range(nMaison):
+        p.join()
+
+    mqmarket.remove()
+    mqhome.remove()
+    sys.exit(1)
+
 
 
 

@@ -4,6 +4,7 @@ import sysv_ipc
 import threading
 import os
 import signal
+import time
 
 
 key = 999
@@ -33,7 +34,10 @@ def changeStock(mq, msg, tp, mutex):
         stock = stock + value
         mutex.release()
     elif value<0:  # Home wants to buy
-        # if stock < value: wait()
+        if stock < value:
+            print("Plus de STOCK !")
+            mqMarket.send(b"", type =0)
+            sys.exit(1)
         mutex.acquire()
         stock = stock + value
         mutex.release()
