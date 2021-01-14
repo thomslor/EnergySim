@@ -3,7 +3,7 @@ import os
 import sysv_ipc
 import multiprocessing
 import random
-# import time
+import time
 
 
 keyMarket = 999
@@ -20,21 +20,20 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
 
     if ConsoRate > InitProd:  # Implémenter un boucle pour accéder à retour à la normale (tant que j'ai pas recu le bon message, récupérez des messages)
             Quantity = ConsoRate - InitProd
-            """
             m1 = "%d,%d" % (pid, Quantity)
             m2 = m1.encode()
             mqhome.send(m2, type=2)
            
             try:
-                rep, t = mqhome.receive(type=pid)
+                time.sleep(10)
+                rep, t = mqhome.receive(type=pid, block=False)
                 print(rep.decode())
             except sysv_ipc.BusyError:
-               """
-            m = "%d,%d" % (pid, -Quantity)
-            m = m.encode()
-            mqmarket.send(m, type=1)
-            m, t = mqmarket.receive(type=pid)
-            print("m2 is ", m, "\n")
+                m = "%d,%d" % (pid, -Quantity)
+                m = m.encode()
+                mqmarket.send(m, type=1)
+                m, t = mqmarket.receive(type=pid)
+                print("m2 is ", m, "\n")
 
 
 
@@ -106,8 +105,8 @@ if __name__ == "__main__":
     b = multiprocessing.Barrier(nMaison)
 
     for x in range(nMaison):
-        InitProd = 200# random.randrange(100, 1000, 100)
-        ConsoRate = 400#random.randrange(100, 1000, 100)
+        InitProd = random.randrange(100, 1000, 100)
+        ConsoRate = random.randrange(100, 1000, 100)
         SalePol = random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()
