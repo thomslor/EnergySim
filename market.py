@@ -34,13 +34,15 @@ def changeStock(mq, msg, tp, mutex):
         stock = stock + value
         mutex.release()
     elif value<0:  # Home wants to buy
-        if stock < value:
+        if stock > abs(value):
+            mutex.acquire()
+            stock = stock + value
+            mutex.release()
+        else:
             print("Plus de STOCK !")
-            mqMarket.send(b"", type =0)
+            mqMarket.send(b"", type=0)
             sys.exit(1)
-        mutex.acquire()
-        stock = stock + value
-        mutex.release()
+
     mq.send(b"", type=pid)  # Send an ACK
     print("stock is ", str(stock))
     print("Ending thread:", threading.current_thread().name)
@@ -51,21 +53,15 @@ if __name__ == "__main__":
     signal.signal(signal.SIGUSR2, handler)
     signal.signal(signal.SIGILL, handler)
     signal.signal(signal.SIGPIPE, handler)
-    price, stock, war, tension, carbon, crisis = 1, 500, 0, 0, 0, 0
+    price, stock, war, tension, carbon, crisis = 1, 100000, 0, 0, 0, 0
     price = 0.9*price + (0.2*war + 0.5*tension + 0.5*carbon + 0.5*crisis)  #random coeff
     lock = threading.Lock()
 
-    try:
-        mqMarket = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREX)
-    except sysv_ipc.ExistentialError:
-        print("Message queue", key, "already exist, terminating.")
-        sys.exit(1)
+    mqMarket = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREAT)
 
-    try:
-        mqHome = sysv_ipc.MessageQueue(keyHome, sysv_ipc.IPC_CREX)
-    except sysv_ipc.ExistentialError:
-        print("Message queue", keyHome, "already exist, terminating.")
-        sys.exit(1)
+
+    mqHome = sysv_ipc.MessageQueue(keyHome, sysv_ipc.IPC_CREAT)
+
 
     while True:
         while True:
