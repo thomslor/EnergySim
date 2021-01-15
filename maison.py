@@ -10,11 +10,12 @@ keyMarket = 999
 keyHome = 777
 
 def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
-
-
+    i=1
 
     while True:
-        b.wait()
+        cond = b.wait()
+        if cond == 0:
+            print("Tour ", i)
         pid = os.getpid()
         print("Maison ", pid, " | Consommation : ", ConsoRate, " | Production : ", InitProd, "\n")
 
@@ -93,6 +94,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
 
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
+        i+=1
 
 
 
@@ -115,8 +117,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     nMaison = int(sys.argv[1])
-    b = multiprocessing.Barrier(nMaison+1)
-    i = 1
+    b = multiprocessing.Barrier(nMaison)
 
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
@@ -126,11 +127,8 @@ if __name__ == "__main__":
         p.start()
 
         # Mettre la barrière dans une boucle et faire le print Tour suivant !
-
+"""
     while True:
-        b.wait()
-        print("Tour ", i)
-        i+=1
 
         try:
             mqmarket.receive(type=0, block=False)
@@ -143,7 +141,7 @@ if __name__ == "__main__":
             sys.exit(1)
         except sysv_ipc.BusyError:
             pass
-
+"""
 
 
 
