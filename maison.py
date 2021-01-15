@@ -14,6 +14,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
     while True:
         b.wait()
 
+
         pid = os.getpid()
         print("Maison ", pid, " | Consommation : ", ConsoRate, " | Production : ", InitProd, "\n")
 
@@ -24,9 +25,9 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
             mqhome.send(m2, type=2)
 
             try:
-                time.sleep(1)
+                time.sleep(10)
                 rep, t = mqhome.receive(type=pid, block=False)
-                #print(rep.decode())
+                print(rep.decode())
             except sysv_ipc.BusyError:
                 m = "%d,%d" % (pid, -Quantity)
                 m = m.encode()
@@ -39,16 +40,22 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
         elif ConsoRate < InitProd:
             surplus = InitProd - ConsoRate
             if SalePol == 0:
-                m, t = mqhome.receive(type=2)
-                dem = m.decode()
-                pidm, quantitym = dem.split(",")
-                #print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
-                quantitym = int(quantitym)
-                if surplus >= quantitym:
-                    mqhome.send(pidm.encode(), type=int(pidm))
-                    surplus -= quantitym
-                else:
-                    mqhome.send(m)
+                try:
+                    time.sleep(3)
+                    m, t = mqhome.receive(type=2, block=False)
+                    dem = m.decode()
+                    pidm, quantitym = dem.split(",")
+                    # print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
+                    quantitym = int(quantitym)
+                    reponse = "Don réalisé"
+                    if surplus >= quantitym:
+                        mqhome.send(reponse.encode(), type=int(pidm))
+                        surplus -= quantitym
+                    else:
+                        mqhome.send(m)
+                except sysv_ipc.BusyError:
+                    pass
+
 
             elif SalePol == 1:
                 # Envoyer Message dans MQ vers Market
@@ -64,6 +71,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
             elif SalePol == 2:
                 try:
                     while surplus > 0:
+                        time.sleep(3)
                         m, t = mqhome.receive(block=False, type=2)
                         dem = m.decode()
                         pidm, quantitym = dem.split(",")
@@ -111,18 +119,23 @@ if __name__ == "__main__":
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
-        SalePol = random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
+        SalePol = 0  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()
 
-    mqmarket.receive(type=0, block = False)
-    print("Marché Down")
-    for x in range(nMaison):
-        p.join()
+    while True:
+        try:
+            mqmarket.receive(type=0, block=False)
+            print("Marché Down")
+            for x in range(nMaison):
+                p.join()
 
-    mqmarket.remove()
-    mqhome.remove()
-    sys.exit(1)
+            mqmarket.remove()
+            mqhome.remove()
+            sys.exit(1)
+        except sysv_ipc.BusyError:
+            pass
+
 
 
 
