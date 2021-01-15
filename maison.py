@@ -16,6 +16,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
         cond = b.wait()
         if cond == 0:
             print("Tour ", i)
+        b.wait()
         pid = os.getpid()
         print("Maison ", pid, " | Consommation : ", ConsoRate, " | Production : ", InitProd, "\n")
 
