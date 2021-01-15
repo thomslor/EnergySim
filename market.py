@@ -18,7 +18,7 @@ def weather(mutex, temp):
         mutex.acquire()
         temp.value = temp.value + random.gauss(0, 4)
         mutex.release()
-        print("WEATHER: Temperature is ", temp.value)
+        #print("WEATHER: Temperature is ", temp.value)
 
 
 def handler(sig, frame):
@@ -32,6 +32,9 @@ def handler(sig, frame):
         carbon = (carbon+1) % 2
     if sig == signal.SIGPIPE:
         crisis = (crisis+1) % 2
+    if sig == signal.SIGINT:
+        mqMarket.send(b"", type=0)
+
 
 
 def changeStock(mq, msg, mutex):
@@ -46,15 +49,9 @@ def changeStock(mq, msg, mutex):
         stock = stock + value
         mutex.release()
     elif value < 0:  # Home wants to buy
-        if stock > abs(value):
-            mutex.acquire()
-            stock = stock + value
-            mutex.release()
-        else:
-            print("Plus de STOCK !")
-            mqMarket.send(b"", type=0)
-            sys.exit(1)
-
+         mutex.acquire()
+         stock = stock + value
+         mutex.release()
     mq.send(b"", type=pid)  # Send an ACK
     print("stock is ", str(stock))
     print("Ending thread:", threading.current_thread().name)
@@ -101,4 +98,4 @@ if __name__ == "__main__":
                 mqMarket.remove()
                 mqHome.remove()
                 """
-    pro.join()
+    # pro.join()

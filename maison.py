@@ -11,10 +11,10 @@ keyHome = 777
 
 def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
 
+
+
     while True:
         b.wait()
-
-
         pid = os.getpid()
         print("Maison ", pid, " | Consommation : ", ConsoRate, " | Production : ", InitProd, "\n")
 
@@ -25,7 +25,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
             mqhome.send(m2, type=2)
 
             try:
-                time.sleep(10)
+                time.sleep(5)
                 rep, t = mqhome.receive(type=pid, block=False)
                 print(rep.decode())
             except sysv_ipc.BusyError:
@@ -41,7 +41,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
             surplus = InitProd - ConsoRate
             if SalePol == 0:
                 try:
-                    time.sleep(3)
+                    time.sleep(2)
                     m, t = mqhome.receive(type=2, block=False)
                     dem = m.decode()
                     pidm, quantitym = dem.split(",")
@@ -99,6 +99,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
 
 
 
+
 if __name__ == "__main__":
     try:
         mqmarket = sysv_ipc.MessageQueue(keyMarket)
@@ -114,16 +115,23 @@ if __name__ == "__main__":
         sys.exit(1)
 
     nMaison = int(sys.argv[1])
-    b = multiprocessing.Barrier(nMaison)
+    b = multiprocessing.Barrier(nMaison+1)
+    i = 1
 
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
-        SalePol = 0  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
+        SalePol = random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()
 
+        # Mettre la barrière dans une boucle et faire le print Tour suivant !
+
     while True:
+        b.wait()
+        print("Tour ", i)
+        i+=1
+
         try:
             mqmarket.receive(type=0, block=False)
             print("Marché Down")
@@ -135,6 +143,8 @@ if __name__ == "__main__":
             sys.exit(1)
         except sysv_ipc.BusyError:
             pass
+
+
 
 
 
