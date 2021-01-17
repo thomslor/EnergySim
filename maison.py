@@ -9,8 +9,9 @@ import time
 keyMarket = 999
 keyHome = 777
 
+
 def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
-    i=1
+    i = 1
 
     while True:
         cond = b.wait()
@@ -37,8 +38,6 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
                 m, t = mqmarket.receive(type=pid)
                 #print("m2 is ", m, "\n")
 
-
-
         elif ConsoRate < InitProd:
             surplus = InitProd - ConsoRate
             if SalePol == 0:
@@ -58,17 +57,15 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
                 except sysv_ipc.BusyError:
                     pass
 
-
             elif SalePol == 1:
                 # Envoyer Message dans MQ vers Market
                 m = "%d,%d" % (pid, surplus)
-                #print("send is ", m, "\n")
+                # print("send is ", m, "\n")
                 m = m.encode()
-                #print(pid)
+                # print(pid)
                 mqmarket.send(m, type=1)
                 msg, t = mqmarket.receive(type=pid)
-                #print("response is ", msg, "\n")
-
+                # print("response is ", msg, "\n")
 
             elif SalePol == 2:
                 try:
@@ -77,7 +74,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
                         m, t = mqhome.receive(block=False, type=2)
                         dem = m.decode()
                         pidm, quantitym = dem.split(",")
-                        #print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
+                        # print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
                         quantitym = int(quantitym)
                         if surplus >= quantitym:
                             #print(pidm.encode())
@@ -86,16 +83,16 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
                             mqhome.send(m)
                 except sysv_ipc.BusyError:
                     m = "%d,%d" % (pid, surplus)
-                    #print("send is ", m, "\n")
+                    # print("send is ", m, "\n")
                     m = m.encode()
-                    #print(pid)
+                    # print(pid)
                     mqmarket.send(m, type=1)
                     msg, t = mqmarket.receive(type=pid)
-                    #print("response is ", msg, "\n")
+                    # print("response is ", msg, "\n")
 
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
-        i+=1
+        i += 1
 
 
 
