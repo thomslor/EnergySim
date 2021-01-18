@@ -71,34 +71,34 @@ def handler(sig, frame):  # Handle signals and modify values regarding the signa
         lockCrisis.release()
     if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
         if not stop:
-            print("TA MERE")
             mqMarket.send(b"", type=2)
-            print("Home.py is ending")
+            print("maison.py is ending")
             m = mqMarket.receive(type=3)
-            print("m is ", m)
             stop = True
         else:
             pass
 
 
 def changeStock(mq, msg, mutex):  # Change the stock according to the homes
-    print("Starting thread:", threading.current_thread().name)
+    #print("Starting thread:", threading.current_thread().name)
     global stock
     msg = msg.decode()
-    print("msg is ", msg)
+    #print("msg is ", msg)
     pid, value = msg.split(",")
     pid, value = int(pid), int(value)
     if value > 0:  # Home wants to sell
         mutex.acquire()
         stock = stock + value
         mutex.release()
+        typeTransaction = "Vente"
     elif value < 0:  # Home wants to buy
         mutex.acquire()
         stock = stock + value
         mutex.release()
+        typeTransaction = "Achat"
     mq.send(b"", type=pid)  # Send an ACK
-    print("stock is ", str(stock))
-    print("Ending thread:", threading.current_thread().name)
+    print("Transaction with Home ", pid, ", ", typeTransaction,", stock is now :", str(stock))
+    #print("Ending thread:", threading.current_thread().name)
 
 
 if __name__ == "__main__":
@@ -116,6 +116,7 @@ if __name__ == "__main__":
     temperature = 15
     weatherTemp = multiprocessing.Value('d', temperature)
     price, stock, war, tension, carbon, crisis, overconsumption, stop = 1, 100000, 0, 0, 0, 0, 0, False
+    nbTransaction = 0
 
     # Locks
     lock = threading.Lock()
@@ -144,6 +145,7 @@ if __name__ == "__main__":
                 p = threading.Thread(target=changeStock, args=(mqMarket, message, lock))
                 p.start()
                 p.join()
+                nbTransaction +=1
                 break
             except sysv_ipc.BusyError:
                 if stop:
@@ -161,20 +163,19 @@ if __name__ == "__main__":
         lockPol.release()
         lockCarbon.release()
         lockCrisis.release()
-        # print("The current price is ", str(price))
-        # print("The temperature is ", weatherTemp.value)
+        print("The current price is ", round(price, 2), "\n")
+        print("The temperature is ", round(weatherTemp.value, 1), "`\n")
         # print("Stop is ", stop)
         if stop:
             break
 
     # Proper end of the program when receiving control-C or SIGINT
-    print("End")
     os.kill(pro.pid, signal.SIGTERM)
-    print(politic.pid)
+    #print(politic.pid)
     os.kill(politic.pid, signal.SIGTERM)
-    print(economic.pid)
+    #print(economic.pid)
     os.kill(economic.pid, signal.SIGTERM)
     mqHome.remove()
     mqMarket.remove()
-    print("END!!!")
+    print("End of Simulation.\nPrice of energy market : ", round(price, 2),"\nNumber of transactions in market :", nbTransaction)
 
