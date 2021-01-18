@@ -133,21 +133,19 @@ if __name__ == "__main__":
         p.start()
 
 
-"""
+
     while True:
 
         try:
-            mqmarket.receive(type=0, block=False)
-            print("Marché Down")
+            mqmarket.receive(type=2, block=False)
+            print("Ending Simulation...")
             for x in range(nMaison):
                 p.join()
-
-            mqmarket.remove()
-            mqhome.remove()
-            sys.exit(1)
+            mqmarket.send(b"", type=3)
+            break
         except sysv_ipc.BusyError:
             pass
-"""
+
 
 
 

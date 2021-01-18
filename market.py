@@ -70,6 +70,9 @@ def handler(sig, frame):  # Handle signals and modify values regarding the signa
         crisis = (crisis+1) % 2
         lockCrisis.release()
     if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
+        mqMarket.send(b"", type=2)
+        print("Home.py is ending")
+        print(mqMarket.receive(type=3))
         stop = True
 
 
