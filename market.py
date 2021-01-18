@@ -70,10 +70,15 @@ def handler(sig, frame):  # Handle signals and modify values regarding the signa
         crisis = (crisis+1) % 2
         lockCrisis.release()
     if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
-        mqMarket.send(b"", type=2)
-        print("Home.py is ending")
-        print(mqMarket.receive(type=3))
-        stop = True
+        if not stop:
+            print("TA MERE")
+            mqMarket.send(b"", type=2)
+            print("Home.py is ending")
+            m = mqMarket.receive(type=3)
+            print("m is ", m)
+            stop = True
+        else:
+            pass
 
 
 def changeStock(mq, msg, mutex):  # Change the stock according to the homes
@@ -141,7 +146,10 @@ if __name__ == "__main__":
                 p.join()
                 break
             except sysv_ipc.BusyError:
-                pass
+                if stop:
+                    break
+                else:
+                    pass
                 # print("What the hell")
         lockPol.acquire()
         lockCarbon.acquire()
@@ -162,9 +170,11 @@ if __name__ == "__main__":
     # Proper end of the program when receiving control-C or SIGINT
     print("End")
     os.kill(pro.pid, signal.SIGTERM)
+    print(politic.pid)
     os.kill(politic.pid, signal.SIGTERM)
+    print(economic.pid)
     os.kill(economic.pid, signal.SIGTERM)
-    """
     mqHome.remove()
     mqMarket.remove()
-"""
+    print("END!!!")
+

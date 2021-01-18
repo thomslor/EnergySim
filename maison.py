@@ -4,6 +4,7 @@ import sysv_ipc
 import multiprocessing
 import random
 import time
+import signal
 
 # Clés des 2 Messages Queues
 keyMarket = 999
@@ -115,7 +116,6 @@ if __name__ == "__main__":
         print("Cannot connect to MQ", keyMarket)
         sys.exit(1)
 
-
     try:
         mqhome = sysv_ipc.MessageQueue(keyHome)
     except sysv_ipc.ExistentialError:
@@ -124,27 +124,35 @@ if __name__ == "__main__":
 
     nMaison = int(sys.argv[1])
     b = multiprocessing.Barrier(nMaison)
-
+    pidProcesses = []
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
         SalePol = random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()
-
+        print("PID ", p.pid)
+        pidProcesses.append(p.pid)
 
 
     while True:
-
         try:
             mqmarket.receive(type=2, block=False)
             print("Ending Simulation...")
+            n = 0
             for x in range(nMaison):
-                p.join()
+                print(pidProcesses[x])
+                os.kill(pidProcesses[x], signal.SIGTERM)
+                # p.join()
+                n += 1
+                print("HOME ", n)
+            print('Before ACK')
             mqmarket.send(b"", type=3)
+            print("After ACK")
             break
         except sysv_ipc.BusyError:
             pass
+    print("END")
 
 
 
