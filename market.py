@@ -51,16 +51,24 @@ def economics():  # Process economics: send randomly signals (SIGILL & SIGPIPE) 
 
 
 def handler(sig, frame):  # Handle signals and modify values regarding the signal received
-    global war, tension, carbon, crisis, stop
+    global war, tension, carbon, crisis, stop, lockPol, lockCarbon, lockCrisis, mqMarket
     if sig == signal.SIGUSR2:
+        lockPol.acquire()
         war = (war+1) % 2
         tension = 0
+        lockPol.release()
     elif sig == signal.SIGUSR1:
+        lockPol.acquire()
         tension = (tension+1) % 2
+        lockPol.release()
     if sig == signal.SIGILL:
+        lockCarbon.acquire()
         carbon = (carbon+1) % 2
+        lockCarbon.release()
     if sig == signal.SIGPIPE:
+        lockCrisis.acquire()
         crisis = (crisis+1) % 2
+        lockCrisis.release()
     if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
         stop = True
 
@@ -105,6 +113,8 @@ if __name__ == "__main__":
     lock = threading.Lock()
     lockWeather = threading.Lock()
     lockPol = threading.Lock()
+    lockCrisis = threading.Lock()
+    lockCarbon = threading.Lock()
 
     # Child processes
     pro = multiprocessing.Process(target=weather, args=(lockWeather, weatherTemp))
@@ -121,7 +131,7 @@ if __name__ == "__main__":
     while True:
         while True:  # Check if messages have been received in the market message queue
             try:
-                message = mqMarket.receive(type=1, block=False)
+                message, _ = mqMarket.receive(type=1, block=False)
                 # print(message)
                 p = threading.Thread(target=changeStock, args=(mqMarket, message, lock))
                 p.start()
@@ -130,10 +140,16 @@ if __name__ == "__main__":
             except sysv_ipc.BusyError:
                 pass
                 # print("What the hell")
+        lockPol.acquire()
+        lockCarbon.acquire()
+        lockCrisis.acquire()
         lockWeather.acquire()
         # print("Here    Here")
         price = 0.9 * price + temperature*(-0.5) + (0.2 * war + 0.7 * tension + 1.2 * carbon + 1.7 * crisis)
         lockWeather.release()
+        lockPol.release()
+        lockCarbon.release()
+        lockCrisis.release()
         # print("The current price is ", str(price))
         # print("The temperature is ", weatherTemp.value)
         # print("Stop is ", stop)
@@ -145,5 +161,7 @@ if __name__ == "__main__":
     os.kill(pro.pid, signal.SIGTERM)
     os.kill(politic.pid, signal.SIGTERM)
     os.kill(economic.pid, signal.SIGTERM)
-    mqMarket.remove()
+    """
     mqHome.remove()
+    mqMarket.remove()
+"""

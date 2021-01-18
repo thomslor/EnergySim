@@ -9,8 +9,8 @@ import time
 keyMarket = 999
 keyHome = 777
 
-#Processus Maison
-def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
+
+def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
     i = 1
 
     while True:
@@ -41,21 +41,21 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
             except sysv_ipc.BusyError:
                 m = "%d,%d" % (pid, -Quantity)
                 m = m.encode()
-                #envoi d'une demande d'achat au market
+                # envoi d'une demande d'achat au market
                 mqmarket.send(m, type=1)
-                #Réception de l'ACK, si pas d'ACK, simulation bloquée
+                # Réception de l'ACK, si pas d'ACK, simulation bloquée
                 m, t = mqmarket.receive(type=pid)
-                #print("m2 is ", m, "\n")
+                # print("m2 is ", m, "\n")
 
-        #Cas de surplus d'énergie
+        # Cas de surplus d'énergie
         elif ConsoRate < InitProd:
             surplus = InitProd - ConsoRate
-            #Cas Toujours Donner le surplus
+            # Cas Toujours Donner le surplus
             if SalePol == 0:
                 try:
-                    #Attente d'une demande
+                    # Attente d'une demande
                     time.sleep(2)
-                    #Réception d'une demande
+                    # Réception d'une demande
                     m, t = mqhome.receive(type=2, block=False)
                     dem = m.decode()
                     pidm, quantitym = dem.split(",")
@@ -106,11 +106,6 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
         i += 1
-
-
-
-
-
 
 
 if __name__ == "__main__":
