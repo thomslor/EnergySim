@@ -162,7 +162,7 @@ if __name__ == "__main__":
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
-        SalePol = random.randrange(0, 2, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
+        SalePol = random.randrange(0, 3, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()
         print("PID ", p.pid)
