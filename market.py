@@ -12,7 +12,7 @@ key = 999
 keyHome = 777
 
 
-def weather(mutex, temp):
+def weather(mutex, temp):  # Process weather
     print("Weather PID ", os.getpid())
     while True:
         time.sleep(2)
@@ -22,7 +22,7 @@ def weather(mutex, temp):
         # print("WEATHER: Temperature is ", temp.value)
 
 
-def politics():
+def politics():  # Process politics: send randomly signals (SIGUSR1 & SIGUSR2) to market
     print("Politics PID ", os.getpid())
     pid = int(os.getppid())
     while True:
@@ -32,11 +32,11 @@ def politics():
             print("*****WAR*****")
             os.kill(pid, signal.SIGUSR2)
         elif 20 < random.randrange(0, 100) <= 50:
-            print("*****Tension******")
+            print("*****TENSION******")
             os.kill(pid, signal.SIGUSR1)
 
 
-def economics():
+def economics():  # Process economics: send randomly signals (SIGILL & SIGPIPE) to market
     print("Economics PID ", os.getpid())
     pid = int(os.getppid())
     while True:
@@ -50,7 +50,7 @@ def economics():
             os.kill(pid, signal.SIGPIPE)
 
 
-def handler(sig, frame):
+def handler(sig, frame):  # Handle signals and modify values regarding the signal received
     global war, tension, carbon, crisis, stop
     if sig == signal.SIGUSR2:
         war = (war+1) % 2
@@ -65,7 +65,7 @@ def handler(sig, frame):
         stop = True
 
 
-def changeStock(mq, msg, mutex):
+def changeStock(mq, msg, mutex):  # Change the stock according to the homes
     print("Starting thread:", threading.current_thread().name)
     global stock
     msg = msg.decode()
@@ -89,20 +89,24 @@ if __name__ == "__main__":
     marketPid = os.getpid()
     print("Market PID = ", marketPid)
 
+    # Redirection of signals received
     signal.signal(signal.SIGUSR1, handler)
     signal.signal(signal.SIGUSR2, handler)
     signal.signal(signal.SIGILL, handler)
     signal.signal(signal.SIGPIPE, handler)
     signal.signal(signal.SIGINT, handler)
 
+    # Variables
     temperature = 15
     weatherTemp = multiprocessing.Value('d', temperature)
     price, stock, war, tension, carbon, crisis, overconsumption, stop = 1, 100000, 0, 0, 0, 0, 0, False
 
+    # Locks
     lock = threading.Lock()
     lockWeather = threading.Lock()
     lockPol = threading.Lock()
 
+    # Child processes
     pro = multiprocessing.Process(target=weather, args=(lockWeather, weatherTemp))
     politic = multiprocessing.Process(target=politics)
     economic = multiprocessing.Process(target=economics)
@@ -110,11 +114,12 @@ if __name__ == "__main__":
     politic.start()
     economic.start()
 
+    # Message queues
     mqMarket = sysv_ipc.MessageQueue(key, sysv_ipc.IPC_CREAT)
     mqHome = sysv_ipc.MessageQueue(keyHome, sysv_ipc.IPC_CREAT)
 
     while True:
-        while True:
+        while True:  # Check if messages have been received in the market message queue
             try:
                 msg, tp = mqMarket.receive(type=1, block=False)
                 print(msg)
@@ -126,14 +131,16 @@ if __name__ == "__main__":
                 pass
                 # print("What the hell")
         lockWeather.acquire()
-        print("Here    Here")
-        price = 0.9 * price + temperature*(-0.5) + (0.2 * war + 0.7 * tension + 1.2 * carbon + 1.7 * crisis) # random coeff
+        # print("Here    Here")
+        price = 0.9 * price + temperature*(-0.5) + (0.2 * war + 0.7 * tension + 1.2 * carbon + 1.7 * crisis)
         lockWeather.release()
         # print("The current price is ", str(price))
-        print("The temperature is ", weatherTemp.value)
-        print("Stop is ", stop)
+        # print("The temperature is ", weatherTemp.value)
+        # print("Stop is ", stop)
         if stop:
             break
+
+    # Proper end of the program when receiving control C or SIGINT
     print("End")
     os.kill(pro.pid, signal.SIGTERM)
     os.kill(politic.pid, signal.SIGTERM)
