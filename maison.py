@@ -100,9 +100,10 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
                 # Réception de l'ACK du market
                 mqmarket.receive(type=pid)
 
-
+            #Cas adaptable
             elif SalePol == 2:
                 try:
+                    #Phase Donneur
                     time.sleep(1)
                     m, t = mqhome.receive(block=False, type=2)
                     dem = m.decode()
@@ -116,6 +117,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
                         m1 = "%s,%d" % (pidm, quantitym-surplus)
                         m1 = m1.encode()
                         mqhome.send(m1)
+                #Phase Vendeur
                 except sysv_ipc.BusyError:
                     m = "%d,%d" % (pid, surplus)
                     # print("send is ", m, "\n")
@@ -125,12 +127,15 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
                     msg, t = mqmarket.receive(type=pid)
                     # print("response is ", msg, "\n")
 
+        #Modification des valeurs pour chaque maison + Incrément du tour
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
         i += 1
 
 
 if __name__ == "__main__":
+
+    #Connexions aux MQ
     try:
         mqmarket = sysv_ipc.MessageQueue(keyMarket)
     except sysv_ipc.ExistentialError:
@@ -143,12 +148,17 @@ if __name__ == "__main__":
         print("Cannot connect to MQ", keyHome)
         sys.exit(1)
 
+    #Récupération du nombre de maisons
     nMaison = int(sys.argv[1])
+    #Création de la barrière de synchro
     b = multiprocessing.Barrier(nMaison)
+    #Tableau des PID des maisons
     pidProcesses = []
+    #Lock et Variable partagée nbEchange pour compter les dons
     lock = multiprocessing.Lock()
     nbEchange = 0
 
+    #Lancement des maisons
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
@@ -158,21 +168,20 @@ if __name__ == "__main__":
         print("PID ", p.pid)
         pidProcesses.append(p.pid)
 
-
+    #Boucle d'attente de fin de simulation
     while True:
         try:
             mqmarket.receive(type=2, block=False)
             print("Ending Simulation...")
             n = 0
+            #Fin des process maisons
             for x in range(nMaison):
                 print(pidProcesses[x])
                 os.kill(pidProcesses[x], signal.SIGTERM)
                 # p.join()
                 n += 1
-                print("HOME ", n)
-            print('Before ACK')
+            #Envoi de l'ACK pour fermeture de simulation
             mqmarket.send(b"", type=3)
-            print("After ACK")
             break
         except sysv_ipc.BusyError:
             pass
