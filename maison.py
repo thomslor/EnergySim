@@ -6,83 +6,80 @@ import random
 import time
 import signal
 
-# Clés des 2 Messages Queues
+# Keys of both messages queues
 keyMarket = 999
 keyHome = 777
 
 
-def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
+def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Home process
     global nbEchange
     i = 1
 
     if SalePol == 0:
-        pol = "Toujours Donner"
+        pol = "Always give away"
     elif SalePol == 1:
-        pol = "Toujours Vendre"
+        pol = "Always sell on market"
     else:
-        pol = "Adaptatible"
+        pol = "Sell if no takers"
 
     pid = os.getpid()
-    print("Politique d'échange de maison ", pid, " : ", pol)
+    print("Home energy trade policy", pid, " : ", pol)
 
     while True:
-        #Permet de faire en sorte qu'un seul processus maison affiche le numéro du Tour avant de passer à l'execution des transactions
+        # Allow to display the laps with just one process before go to execute the transactions
         cond = b.wait()
         if cond == 0:
             print("Tour ", i)
         b.wait()
 
-        #Affichage des caractéristiques de la Maison
+        # Display home's characteristics
+        print("Home ", pid, " | Consumption : ", ConsoRate, " | Production : ", InitProd, "\n")
 
-        print("Maison ", pid, " | Consommation : ", ConsoRate, " | Production : ", InitProd, "\n")
-
-
-        #Si la Consommation est supérieur à la production, on envoie une demande dans la Message Queue entre les maisons
+        # If consumption is superior to production, we send a request to the Message Queue between homes
         if ConsoRate > InitProd:
             Quantity = ConsoRate - InitProd
             m1 = "%d,%d" % (pid, Quantity)
             m2 = m1.encode()
-            #envoi de la demande
-            mqhome.send(m2, type=2)
+            mqhome.send(m2, type=2) # Send a request
 
             try:
-                #Attente d'une réponse d'une maison
+                # Waiting for an answer from an home
                 time.sleep(5)
                 rep, t = mqhome.receive(type=pid, block=False)
                 print(rep.decode())
                 lock.acquire()
                 nbEchange += 1
                 lock.release()
-            #Si pas de réponse
+
+            # If no answers
             except sysv_ipc.BusyError:
                 m = "%d,%d" % (pid, -Quantity)
                 m = m.encode()
-                # envoi d'une demande d'achat au market
-                mqmarket.send(m, type=1)
-                # Réception de l'ACK, si pas d'ACK, simulation bloquée
+                mqmarket.send(m, type=1)  # Sending a sales request to the market
+                # ACK reception, if no ACKn then simulation blocked
                 m, t = mqmarket.receive(type=pid)
                 # print("m2 is ", m, "\n")
 
-        # Cas de surplus d'énergie
+        # Case of excess energy
         elif ConsoRate < InitProd:
             surplus = InitProd - ConsoRate
-            # Cas Toujours Donner le surplus
+            # If energy trade policy is: Always give away
             if SalePol == 0:
                 try:
-                    # Attente d'une demande
+                    # Waiting for a request
                     time.sleep(1)
-                    # Réception d'une demande
+                    # Request reception
                     m, t = mqhome.receive(type=2, block=False)
                     dem = m.decode()
-                    #On récupère le PID de la maison qui a besoin d'énergie
+                    # We get back the PID of the home which needs energy
                     pidm, quantitym = dem.split(",")
                     quantitym = int(quantitym)
-                    reponse = "Don réalisé"
-                    #Si on a assez de surplus, on effectue le don en envoyant un ACK
+                    reponse = "Donation achieved"
+                    # If surplus, we carry out the donation with sending an ACK
                     if surplus >= quantitym:
                         mqhome.send(reponse.encode(), type=int(pidm))
                         surplus -= quantitym
-                    #Si pas assez on remet la demande dans la message queue en ayant donné son surplus
+                    # If not enough energy, we put the request back in the message queue with the surplus
                     else:
                         m1 = "%s,%d" % (pidm, quantitym-surplus)
                         m1 = m1.encode()
@@ -90,20 +87,20 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
                 except sysv_ipc.BusyError:
                     pass
 
-            #Cas Toujours Vendre
+            # If energy trade policy is: Always sell on the market
             elif SalePol == 1:
-                # Envoyer Message dans MQ vers Market
+                # Send Message in MQ to the Market
                 m = "%d,%d" % (pid, surplus)
                 m = m.encode()
-                # Envoi de la vente
+                # Send the sales
                 mqmarket.send(m, type=1)
-                # Réception de l'ACK du market
+                # ACK reception from market
                 mqmarket.receive(type=pid)
 
-            #Cas adaptable
+            # If energy trade policy is: Sell if no takers
             elif SalePol == 2:
+                # Donor state
                 try:
-                    #Phase Donneur
                     time.sleep(1)
                     m, t = mqhome.receive(block=False, type=2)
                     dem = m.decode()
@@ -117,7 +114,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
                         m1 = "%s,%d" % (pidm, quantitym-surplus)
                         m1 = m1.encode()
                         mqhome.send(m1)
-                #Phase Vendeur
+                # Seller state
                 except sysv_ipc.BusyError:
                     m = "%d,%d" % (pid, surplus)
                     # print("send is ", m, "\n")
@@ -127,7 +124,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
                     msg, t = mqmarket.receive(type=pid)
                     # print("response is ", msg, "\n")
 
-        #Modification des valeurs pour chaque maison + Incrément du tour
+        # Modification of each home's values + lap incrementation
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
         i += 1
@@ -135,7 +132,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Processus Maison
 
 if __name__ == "__main__":
 
-    #Connexions aux MQ
+    # Connexions to the MQ
     try:
         mqmarket = sysv_ipc.MessageQueue(keyMarket)
     except sysv_ipc.ExistentialError:
@@ -148,39 +145,37 @@ if __name__ == "__main__":
         print("Cannot connect to MQ", keyHome)
         sys.exit(1)
 
-    #Récupération du nombre de maisons
+    # Home number recuperation
     nMaison = int(sys.argv[1])
-    #Création de la barrière de synchro
+    # Synchro barrier creation
     b = multiprocessing.Barrier(nMaison)
-    #Tableau des PID des maisons
+    # Home PID table
     pidProcesses = []
-    #Lock et Variable partagée nbEchange pour compter les dons
+    # Lock and shared variable nbEchange to count the donations
     lock = multiprocessing.Lock()
     nbEchange = 0
 
-    #Lancement des maisons
+    # Lunch of houses
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
-        SalePol = random.randrange(0, 3, 1)  # 0 pour Toujours Donner, 1 pour Toujours Vendre, 2 pour Vendre si personne prend
+        # 0 to Always give away, 1 to Always sell, 2 to Sell if no takers
+        SalePol = random.randrange(0, 3, 1)
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
         p.start()
         print("PID ", p.pid)
         pidProcesses.append(p.pid)
 
-    #Boucle d'attente de fin de simulation
+    # Waiting loop for simulation end
     while True:
         try:
             mqmarket.receive(type=2, block=False)
             print("Ending Simulation...")
-            n = 0
-            #Fin des process maisons
+            # End of homes processes
             for x in range(nMaison):
                 print(pidProcesses[x])
                 os.kill(pidProcesses[x], signal.SIGTERM)
-                # p.join()
-                n += 1
-            #Envoi de l'ACK pour fermeture de simulation
+            # Send ACK to close the simulation
             mqmarket.send(b"", type=3)
             break
         except sysv_ipc.BusyError:

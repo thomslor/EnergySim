@@ -1,4 +1,3 @@
-import sys
 import sysv_ipc
 import multiprocessing
 import threading
@@ -7,7 +6,7 @@ import signal
 import random
 import time
 
-
+# Keys of both messages queues
 key = 999
 keyHome = 777
 
@@ -70,40 +69,42 @@ def handler(sig, frame):  # Handle signals and modify values regarding the signa
         crisis = (crisis+1) % 2
         lockCrisis.release()
     if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
-        if not stop:
-            mqMarket.send(b"", type=2)
-            print("maison.py is ending")
-            m = mqMarket.receive(type=3)
-            stop = True
-        else:
-            pass
+        os.kill(pro.pid, signal.SIGTERM)
+        # print(politic.pid)
+        os.kill(politic.pid, signal.SIGTERM)
+        # print(economic.pid)
+        os.kill(economic.pid, signal.SIGTERM)
+        mqMarket.send(b"", type=2)
+        print("maison.py is ending")
+        mqMarket.receive(type=3)
+        stop = True
 
 
 def changeStock(mq, msg, mutex):  # Change the stock according to the homes
-    #print("Starting thread:", threading.current_thread().name)
+    # print("Starting thread:", threading.current_thread().name)
     global stock
     msg = msg.decode()
-    #print("msg is ", msg)
+    # print("msg is ", msg)
     pid, value = msg.split(",")
     pid, value = int(pid), int(value)
     if value > 0:  # Home wants to sell
         mutex.acquire()
         stock = stock + value
         mutex.release()
-        typeTransaction = "Vente"
+        typeTransaction = "Sales"
     elif value < 0:  # Home wants to buy
         mutex.acquire()
         stock = stock + value
         mutex.release()
-        typeTransaction = "Achat"
+        typeTransaction = "Purchase"
     mq.send(b"", type=pid)  # Send an ACK
-    print("Transaction with Home ", pid, ", ", typeTransaction,", stock is now :", str(stock))
-    #print("Ending thread:", threading.current_thread().name)
+    print("Transaction with Home ", pid, ", ", typeTransaction, ", stock is now :", str(stock))
+    # print("Ending thread:", threading.current_thread().name)
 
 
 if __name__ == "__main__":
     marketPid = os.getpid()
-    print("Market PID = ", marketPid)
+    print("Market PID: ", marketPid)
 
     # Redirection of signals received
     signal.signal(signal.SIGUSR1, handler)
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     # Variables
     temperature = 15
     weatherTemp = multiprocessing.Value('d', temperature)
-    price, stock, war, tension, carbon, crisis, overconsumption, stop = 1, 100000, 0, 0, 0, 0, 0, False
+    price, stock, war, tension, carbon, crisis, stop = 1, 100000, 0, 0, 0, 0, False
     nbTransaction = 0
 
     # Locks
@@ -145,19 +146,17 @@ if __name__ == "__main__":
                 p = threading.Thread(target=changeStock, args=(mqMarket, message, lock))
                 p.start()
                 p.join()
-                nbTransaction +=1
+                nbTransaction += 1
                 break
             except sysv_ipc.BusyError:
                 if stop:
                     break
                 else:
                     pass
-                # print("What the hell")
         lockPol.acquire()
         lockCarbon.acquire()
         lockCrisis.acquire()
         lockWeather.acquire()
-        # print("Here    Here")
         price = 0.9 * price + temperature*(-0.5) + (0.2 * war + 0.7 * tension + 1.2 * carbon + 1.7 * crisis)
         lockWeather.release()
         lockPol.release()
@@ -170,12 +169,7 @@ if __name__ == "__main__":
             break
 
     # Proper end of the program when receiving control-C or SIGINT
-    os.kill(pro.pid, signal.SIGTERM)
-    #print(politic.pid)
-    os.kill(politic.pid, signal.SIGTERM)
-    #print(economic.pid)
-    os.kill(economic.pid, signal.SIGTERM)
     mqHome.remove()
     mqMarket.remove()
-    print("End of Simulation.\nPrice of energy market : ", round(price, 2),"\nNumber of transactions in market :", nbTransaction)
+    print("End of Simulation.\nPrice of energy market : ", round(price, 2), "\nNumber of transactions in market :", nbTransaction)
 
