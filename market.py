@@ -61,7 +61,7 @@ def handler(sig, frame):  # Handle signals and modify values regarding the signa
         carbon = (carbon+1) % 2
     if sig == signal.SIGPIPE:
         crisis = (crisis+1) % 2
-    if sig == signal.SIGINT:  # Stop the program when receiving control C or SIGINT
+    if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
         stop = True
 
 
@@ -121,9 +121,9 @@ if __name__ == "__main__":
     while True:
         while True:  # Check if messages have been received in the market message queue
             try:
-                msg, tp = mqMarket.receive(type=1, block=False)
-                print(msg)
-                p = threading.Thread(target=changeStock, args=(mqMarket, msg, lock))
+                message = mqMarket.receive(type=1, block=False)
+                # print(message)
+                p = threading.Thread(target=changeStock, args=(mqMarket, message, lock))
                 p.start()
                 p.join()
                 break
@@ -140,7 +140,7 @@ if __name__ == "__main__":
         if stop:
             break
 
-    # Proper end of the program when receiving control C or SIGINT
+    # Proper end of the program when receiving control-C or SIGINT
     print("End")
     os.kill(pro.pid, signal.SIGTERM)
     os.kill(politic.pid, signal.SIGTERM)
