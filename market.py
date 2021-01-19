@@ -12,70 +12,78 @@ keyHome = 777
 
 
 def weather(mutex, temp):  # Process weather
-    print("Weather PID ", os.getpid())
+    print("Weather PID: ", os.getpid())
     while True:
         time.sleep(2)
         mutex.acquire()
         temp.value = temp.value + random.gauss(0, 4)
+        if temp.value >= 45:
+            temp.value = 40
+        elif temp.value <= -30:
+            temp.value = -25
         mutex.release()
         # print("WEATHER: Temperature is ", temp.value)
 
 
 def politics():  # Process politics: send randomly signals (SIGUSR1 & SIGUSR2) to market
-    print("Politics PID ", os.getpid())
+    print("Politics PID: ", os.getpid())
     pid = int(os.getppid())
     while True:
         time.sleep(10)
         random.randrange(0, 100)
         if random.randrange(0, 100) <= 20:
-            print("*****WAR*****")
             os.kill(pid, signal.SIGUSR2)
         elif 20 < random.randrange(0, 100) <= 50:
-            print("*****TENSION******")
             os.kill(pid, signal.SIGUSR1)
 
 
 def economics():  # Process economics: send randomly signals (SIGILL & SIGPIPE) to market
-    print("Economics PID ", os.getpid())
+    print("Economics PID: ", os.getpid(), "\n")
     pid = int(os.getppid())
     while True:
         time.sleep(10)
         ca, cr = random.randrange(0, 100), random.randrange(0, 100)
         if ca <= 30:
-            print("*****CARBON*****")
             os.kill(pid, signal.SIGILL)
         if cr <= 30:
-            print("*****CRISIS*****")
             os.kill(pid, signal.SIGPIPE)
 
 
 def handler(sig, frame):  # Handle signals and modify values regarding the signal received
-    global war, tension, carbon, crisis, stop, lockPol, lockCarbon, lockCrisis, mqMarket
+    global war, tension, carbon, crisis, stop, mqMarket
     if sig == signal.SIGUSR2:
-        lockPol.acquire()
+        if war == 0:
+            print("*****WAR BEGINS*****")
+            if tension == 1:
+                print("*****AND ERASES TENSIONS*****")
+        else:
+            print("*****WAR ENDS*****")
         war = (war+1) % 2
         tension = 0
-        lockPol.release()
     elif sig == signal.SIGUSR1:
-        lockPol.acquire()
+        if tension == 0:
+            print("*****DIPLOMATIC TENSIONS*****")
+        else:
+            print("*****NO MORE TENSIONS*****")
         tension = (tension+1) % 2
-        lockPol.release()
     if sig == signal.SIGILL:
-        lockCarbon.acquire()
+        if carbon == 0:
+            print("*****CARBON RAISES*****")
+        else:
+            print("*****CARBON DECREASES*****")
         carbon = (carbon+1) % 2
-        lockCarbon.release()
     if sig == signal.SIGPIPE:
-        lockCrisis.acquire()
+        if crisis == 0:
+            print("*****HUGE CRISIS*****")
+        else:
+            print("*****REGROWTH AFTER CRISIS*****")
         crisis = (crisis+1) % 2
-        lockCrisis.release()
     if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
         os.kill(pro.pid, signal.SIGTERM)
-        # print(politic.pid)
         os.kill(politic.pid, signal.SIGTERM)
-        # print(economic.pid)
         os.kill(economic.pid, signal.SIGTERM)
         mqMarket.send(b"", type=2)
-        print("maison.py is ending")
+        print("maison.py is ending...")
         mqMarket.receive(type=3)
         stop = True
 
@@ -116,15 +124,12 @@ if __name__ == "__main__":
     # Variables
     temperature = 15
     weatherTemp = multiprocessing.Value('d', temperature)
-    price, stock, war, tension, carbon, crisis, stop = 1, 100000, 0, 0, 0, 0, False
+    price, stock, war, tension, carbon, crisis, stop = 15, 100000, 0, 0, 0, 0, False
     nbTransaction = 0
 
     # Locks
     lock = threading.Lock()
     lockWeather = threading.Lock()
-    lockPol = threading.Lock()
-    lockCrisis = threading.Lock()
-    lockCarbon = threading.Lock()
 
     # Child processes
     pro = multiprocessing.Process(target=weather, args=(lockWeather, weatherTemp))
@@ -153,17 +158,17 @@ if __name__ == "__main__":
                     break
                 else:
                     pass
-        lockPol.acquire()
-        lockCarbon.acquire()
-        lockCrisis.acquire()
+
+        # Price calculation
         lockWeather.acquire()
-        price = 0.9 * price + temperature*(-0.5) + (0.2 * war + 0.7 * tension + 1.2 * carbon + 1.7 * crisis)
+        print("price:", price, "temperature:", weatherTemp.value, "war:", war, "tension:", tension, "carbon:", carbon, "crisis:", crisis)
+        price = 0.9 * price + weatherTemp.value*(-0.5) + (20 * war + 13 * tension + 8 * carbon + 17 * crisis)
+        if price <= 0:
+            price = 0.5
         lockWeather.release()
-        lockPol.release()
-        lockCarbon.release()
-        lockCrisis.release()
-        print("The current price is ", round(price, 2), "\n")
-        print("The temperature is ", round(weatherTemp.value, 1), "`\n")
+
+        print("The current price is ", round(price, 2), "€/Wh")
+        print("The temperature is ", round(weatherTemp.value, 1), "°C\n")
         # print("Stop is ", stop)
         if stop:
             break
@@ -171,5 +176,5 @@ if __name__ == "__main__":
     # Proper end of the program when receiving control-C or SIGINT
     mqHome.remove()
     mqMarket.remove()
-    print("End of Simulation.\nPrice of energy market : ", round(price, 2), "\nNumber of transactions in market :", nbTransaction)
+    print("End of Simulation...\nPrice of energy market : ", round(price, 2), "€/Wh\nNumber of transactions in market :", nbTransaction)
 

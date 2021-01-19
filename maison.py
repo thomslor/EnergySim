@@ -11,8 +11,7 @@ keyMarket = 999
 keyHome = 777
 
 
-def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Home process
-    global nbEchange
+def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home process
     i = 1
 
     if SalePol == 0:
@@ -48,7 +47,9 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket):  # Home process
                 rep, t = mqhome.receive(type=pid, block=False)
                 print(rep.decode())
                 lock.acquire()
-                nbEchange += 1
+                print("NBE Avant = ", exchange.value)
+                exchange.value = exchange.value + 1
+                print("NBE APRES= ", exchange.value)
                 lock.release()
 
             # If no answers
@@ -154,6 +155,7 @@ if __name__ == "__main__":
     # Lock and shared variable nbEchange to count the donations
     lock = multiprocessing.Lock()
     nbEchange = 0
+    homeExchange = multiprocessing.Value('d', nbEchange)
 
     # Lunch of houses
     for x in range(nMaison):
@@ -161,7 +163,7 @@ if __name__ == "__main__":
         ConsoRate = random.randrange(100, 1000, 100)
         # 0 to Always give away, 1 to Always sell, 2 to Sell if no takers
         SalePol = random.randrange(0, 3, 1)
-        p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket))
+        p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket, homeExchange))
         p.start()
         print("PID ", p.pid)
         pidProcesses.append(p.pid)
@@ -173,14 +175,14 @@ if __name__ == "__main__":
             print("Ending Simulation...")
             # End of homes processes
             for x in range(nMaison):
-                print(pidProcesses[x])
+                print("Home ", pidProcesses[x], "is stopped")
                 os.kill(pidProcesses[x], signal.SIGTERM)
             # Send ACK to close the simulation
             mqmarket.send(b"", type=3)
             break
         except sysv_ipc.BusyError:
             pass
-    print("End of Simulation\nNumber of exchanges between homes : ", nbEchange)
+    print("End of Simulation\nNumber of exchanges between homes : ", homeExchange.value)
 
 
 
