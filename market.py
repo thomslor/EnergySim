@@ -175,9 +175,9 @@ if __name__ == "__main__":
                 stockvarbuffer = stockvar
                 stockvar = 0
                 lock.release()
-                price = 0.999 * price + (1/10) * 1/(weatherTemp.value+25.1) - 0.001*stockvarbuffer + (0.2 * war + 0.13 * tension + 0.08 * carbon + 0.17 * crisis)
+                price = 0.999 * price + (1/10) * 1/(weatherTemp.value+25.1) - 0.0001*stockvarbuffer + (0.02 * war + 0.013 * tension + 0.008 * carbon + 0.017 * crisis)
                 if price <= 0:
-                    price = 0
+                    price = 0.0001
                 lockWeather.release()
 
                 print(tour.decode())
