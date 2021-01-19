@@ -14,7 +14,7 @@ keyHome = 777
 def weather(mutex, temp):  # Process weather
     print("Weather PID: ", os.getpid())
     while True:
-        time.sleep(2)
+        time.sleep(random.randrange(2, 11, 1))
         mutex.acquire()
         temp.value = temp.value + random.gauss(0, 4)
         if temp.value >= 45:
@@ -31,9 +31,9 @@ def politics():  # Process politics: send randomly signals (SIGUSR1 & SIGUSR2) t
     while True:
         time.sleep(10)
         random.randrange(0, 100)
-        if random.randrange(0, 100) <= 20:
+        if random.randrange(0, 100) <= 10:
             os.kill(pid, signal.SIGUSR2)
-        elif 20 < random.randrange(0, 100) <= 50:
+        elif 20 < random.randrange(0, 100) <= 30:
             os.kill(pid, signal.SIGUSR1)
 
 
@@ -42,10 +42,10 @@ def economics():  # Process economics: send randomly signals (SIGILL & SIGPIPE) 
     pid = int(os.getppid())
     while True:
         time.sleep(10)
-        ca, cr = random.randrange(0, 100), random.randrange(0, 100)
-        if ca <= 30:
+        ca= random.randrange(0, 100)
+        if ca <= 20:
             os.kill(pid, signal.SIGILL)
-        if cr <= 30:
+        if ca > 80:
             os.kill(pid, signal.SIGPIPE)
 
 
@@ -145,6 +145,9 @@ if __name__ == "__main__":
 
     while True:
         while True:  # Check if messages have been received in the market message queue
+            lock.acquire()
+            stockbuffer = stock
+            lock.release()
             try:
                 message, _ = mqMarket.receive(type=1, block=False)
                 # print(message)
@@ -160,9 +163,9 @@ if __name__ == "__main__":
                     pass
 
         # Price calculation
+        stockvar = stock-stockbuffer
         lockWeather.acquire()
-        print("price:", price, "temperature:", weatherTemp.value, "war:", war, "tension:", tension, "carbon:", carbon, "crisis:", crisis)
-        price = 0.9 * price + weatherTemp.value*(-0.5) + (20 * war + 13 * tension + 8 * carbon + 17 * crisis)
+        price = 0.9 * price + weatherTemp.value*(-0.5) + stockvar/1000 + (20 * war + 13 * tension + 8 * carbon + 17 * crisis)
         if price <= 0:
             price = 0.5
         lockWeather.release()
