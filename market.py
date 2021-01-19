@@ -98,13 +98,6 @@ def printhandler(signal):
         print("maison.py is ending...")
 
 
-
-
-
-
-
-
-
 def changeStock(mq, msg, mutex):  # Change the stock according to the homes
     global stockvar
     msg = msg.decode()

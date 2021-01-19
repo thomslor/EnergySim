@@ -186,6 +186,7 @@ if __name__ == "__main__":
             break
         except sysv_ipc.BusyError:
             pass
+
     print("End of Simulation\nNumber of exchanges between homes : ", homeExchange.value)
 
 
