@@ -25,8 +25,16 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
     print("Home energy trade policy", pid, " : ", pol)
 
     while True:
+
         # Allow to display the laps with just one process before go to execute the transactions
         cond = b.wait()
+
+        try:
+            # Remove the messages from the previous turn
+            mqhome.receive(type=2, block=False)
+        except sysv_ipc.BusyError:
+            pass
+
         if cond == 0:
             print("Tour ", i)
         b.wait()
@@ -47,9 +55,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
                 rep, t = mqhome.receive(type=pid, block=False)
                 print(rep.decode())
                 lock.acquire()
-                print("NBE Avant = ", exchange.value)
                 exchange.value = exchange.value + 1
-                print("NBE APRES= ", exchange.value)
                 lock.release()
 
             # If no answers
@@ -82,9 +88,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
                         surplus -= quantitym
                     # If not enough energy, we put the request back in the message queue with the surplus
                     else:
-                        m1 = "%s,%d" % (pidm, quantitym-surplus)
-                        m1 = m1.encode()
-                        mqhome.send(m1)
+                        mqhome.send(m)
                 except sysv_ipc.BusyError:
                     pass
 
@@ -108,13 +112,13 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
                     pidm, quantitym = dem.split(",")
                     # print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
                     quantitym = int(quantitym)
+                    reponse = "Donation achieved"
                     if surplus >= quantitym:
                         # print(pidm.encode())
-                        mqhome.send(pidm.encode(), type=1)
+                        mqhome.send(reponse.encode(), type=int(pidm))
+                        surplus -= quantitym
                     else:
-                        m1 = "%s,%d" % (pidm, quantitym-surplus)
-                        m1 = m1.encode()
-                        mqhome.send(m1)
+                        mqhome.send(m)
                 # Seller state
                 except sysv_ipc.BusyError:
                     m = "%d,%d" % (pid, surplus)
@@ -157,12 +161,12 @@ if __name__ == "__main__":
     nbEchange = 0
     homeExchange = multiprocessing.Value('d', nbEchange)
 
-    # Lunch of houses
+    # Launch of houses
     for x in range(nMaison):
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
         # 0 to Always give away, 1 to Always sell, 2 to Sell if no takers
-        SalePol = random.randrange(0, 3, 1)
+        SalePol = 0 #random.randrange(0, 3, 1)
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket, homeExchange))
         p.start()
         print("PID ", p.pid)
