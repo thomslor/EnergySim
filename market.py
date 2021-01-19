@@ -22,7 +22,7 @@ def weather(mutex, temp):  # Process weather
         elif temp.value <= -30:
             temp.value = -25
         mutex.release()
-        # print("WEATHER: Temperature is ", temp.value)
+
 
 
 def politics():  # Process politics: send randomly signals (SIGUSR1 & SIGUSR2) to market
@@ -52,47 +52,62 @@ def economics():  # Process economics: send randomly signals (SIGILL & SIGPIPE) 
 def handler(sig, frame):  # Handle signals and modify values regarding the signal received
     global war, tension, carbon, crisis, stop, mqMarket
     if sig == signal.SIGUSR2:
+        printhandler("war")
+        war = (war+1) % 2
+        tension = 0
+    elif sig == signal.SIGUSR1:
+        printhandler("tension")
+        tension = (tension+1) % 2
+    if sig == signal.SIGILL:
+        printhandler("carbon")
+        carbon = (carbon+1) % 2
+    if sig == signal.SIGPIPE:
+        printhandler("crisis")
+        crisis = (crisis+1) % 2
+    if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
+        mqMarket.send(b"", type=2)
+        printhandler("stop")
+        mqMarket.receive(type=3)
+        stop = True
+
+def printhandler(signal):
+    global war, tension, carbon, crisis, stop, mqMarket
+    if signal == "war":
         if war == 0:
             print("*****WAR BEGINS*****")
             if tension == 1:
                 print("*****AND ERASES TENSIONS*****")
         else:
             print("*****WAR ENDS*****")
-        war = (war+1) % 2
-        tension = 0
-    elif sig == signal.SIGUSR1:
+    if signal == "tension":
         if tension == 0:
             print("*****DIPLOMATIC TENSIONS*****")
         else:
             print("*****NO MORE TENSIONS*****")
-        tension = (tension+1) % 2
-    if sig == signal.SIGILL:
+    if signal == "carbon":
         if carbon == 0:
             print("*****CARBON RAISES*****")
         else:
             print("*****CARBON DECREASES*****")
-        carbon = (carbon+1) % 2
-    if sig == signal.SIGPIPE:
+    if signal == "crisis":
         if crisis == 0:
             print("*****HUGE CRISIS*****")
         else:
             print("*****REGROWTH AFTER CRISIS*****")
-        crisis = (crisis+1) % 2
-    if sig == signal.SIGINT:  # Use to proper stop the program when receiving control-C or SIGINT
-        os.kill(pro.pid, signal.SIGTERM)
-        os.kill(politic.pid, signal.SIGTERM)
-        os.kill(economic.pid, signal.SIGTERM)
-        mqMarket.send(b"", type=2)
+    if signal == "stop":
         print("maison.py is ending...")
-        mqMarket.receive(type=3)
-        stop = True
+
+
+
+
+
+
+
 
 
 def changeStock(mq, msg, mutex):  # Change the stock according to the homes
-    # print("Starting thread:", threading.current_thread().name)
     global stockvar
     msg = msg.decode()
-    # print("msg is ", msg)
     pid, value = msg.split(",")
     pid, value = int(pid), int(value)
     if value > 0:  # Home wants to sell
@@ -107,7 +122,7 @@ def changeStock(mq, msg, mutex):  # Change the stock according to the homes
         typeTransaction = "Purchase"
     mq.send(b"", type=pid)  # Send an ACK
     # print("Transaction with Home ", pid, ", ", typeTransaction, ", stock is now :", str(stock))
-    # print("Ending thread:", threading.current_thread().name)
+
 
 
 if __name__ == "__main__":
@@ -177,8 +192,6 @@ if __name__ == "__main__":
                 print("Variation of stock is ", stockvarbuffer)
                 print("The current price is ", round(price, 4), "€/kWh")
                 print("The temperature is ", round(weatherTemp.value, 1), "°C\n")
-                print("price:", price, "temperature:", weatherTemp.value, "war:", war, "tension:", tension, "carbon:",
-                      carbon, "crisis:", crisis)
             except sysv_ipc.BusyError:
                 pass
 
@@ -187,6 +200,9 @@ if __name__ == "__main__":
             break
 
     # Proper end of the program when receiving control-C or SIGINT
+    os.kill(pro.pid, signal.SIGTERM)
+    os.kill(politic.pid, signal.SIGTERM)
+    os.kill(economic.pid, signal.SIGTERM)
     mqHome.remove()
     mqMarket.remove()
     print("End of Simulation...\nPrice of energy market : ", round(price, 2), "€/Wh\nNumber of transactions in market :", nbTransaction)

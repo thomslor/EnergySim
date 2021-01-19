@@ -65,7 +65,7 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
                 mqmarket.send(m, type=1)  # Sending a sales request to the market
                 # ACK reception, if no ACKn then simulation blocked
                 m, t = mqmarket.receive(type=pid)
-                # print("m2 is ", m, "\n")
+
 
         # Case of excess energy
         elif ConsoRate < InitProd:
@@ -110,11 +110,9 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
                     m, t = mqhome.receive(block=False, type=2)
                     dem = m.decode()
                     pidm, quantitym = dem.split(",")
-                    # print("Le PID de la demande = ", pidm, "\nLa Quantité demandée = ", quantitym)
                     quantitym = int(quantitym)
                     reponse = "Donation achieved"
                     if surplus >= quantitym:
-                        # print(pidm.encode())
                         mqhome.send(reponse.encode(), type=int(pidm))
                         surplus -= quantitym
                     else:
@@ -122,12 +120,9 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
                 # Seller state
                 except sysv_ipc.BusyError:
                     m = "%d,%d" % (pid, surplus)
-                    # print("send is ", m, "\n")
                     m = m.encode()
-                    # print(pid)
                     mqmarket.send(m, type=1)
                     msg, t = mqmarket.receive(type=pid)
-                    # print("response is ", msg, "\n")
 
         # Modification of each home's values + lap incrementation
         InitProd = random.randrange(100, 1000, 100)
