@@ -42,10 +42,10 @@ def economics():  # Process economics: send randomly signals (SIGILL & SIGPIPE) 
     pid = int(os.getppid())
     while True:
         time.sleep(10)
-        ca= random.randrange(0, 100)
+        ca, cr = random.randrange(0, 100), random.randrange(0, 100)
         if ca <= 20:
             os.kill(pid, signal.SIGILL)
-        if ca > 80:
+        if cr <= 20:
             os.kill(pid, signal.SIGPIPE)
 
 
@@ -90,23 +90,23 @@ def handler(sig, frame):  # Handle signals and modify values regarding the signa
 
 def changeStock(mq, msg, mutex):  # Change the stock according to the homes
     # print("Starting thread:", threading.current_thread().name)
-    global stock
+    global stockvar
     msg = msg.decode()
     # print("msg is ", msg)
     pid, value = msg.split(",")
     pid, value = int(pid), int(value)
     if value > 0:  # Home wants to sell
         mutex.acquire()
-        stock = stock + value
+        stockvar += value
         mutex.release()
         typeTransaction = "Sales"
     elif value < 0:  # Home wants to buy
         mutex.acquire()
-        stock = stock + value
+        stockvar += value
         mutex.release()
         typeTransaction = "Purchase"
     mq.send(b"", type=pid)  # Send an ACK
-    print("Transaction with Home ", pid, ", ", typeTransaction, ", stock is now :", str(stock))
+    # print("Transaction with Home ", pid, ", ", typeTransaction, ", stock is now :", str(stock))
     # print("Ending thread:", threading.current_thread().name)
 
 
@@ -124,7 +124,8 @@ if __name__ == "__main__":
     # Variables
     temperature = 15
     weatherTemp = multiprocessing.Value('d', temperature)
-    price, stock, war, tension, carbon, crisis, stop = 15, 100000, 0, 0, 0, 0, False
+    price, stockvar, war, tension, carbon, crisis, stop = 0.1765, 0, 0, 0, 0, 0, False
+    stockvarbuffer = 0
     nbTransaction = 0
 
     # Locks
@@ -145,12 +146,9 @@ if __name__ == "__main__":
 
     while True:
         while True:  # Check if messages have been received in the market message queue
-            lock.acquire()
-            stockbuffer = stock
-            lock.release()
+
             try:
                 message, _ = mqMarket.receive(type=1, block=False)
-                # print(message)
                 p = threading.Thread(target=changeStock, args=(mqMarket, message, lock))
                 p.start()
                 p.join()
@@ -161,18 +159,30 @@ if __name__ == "__main__":
                     break
                 else:
                     pass
+            try:
+                tour, tt = mqMarket.receive(type=3, block=False)
+                # Price calculation
+                lockWeather.acquire()
+                lock.acquire()
+                stockvarbuffer = stockvar
+                stockvar = 0
+                lock.release()
+                price = 0.999 * price + (1/10) * 1/(weatherTemp.value+25.1) - 0.001*stockvarbuffer + (0.2 * war + 0.13 * tension + 0.08 * carbon + 0.17 * crisis)
+                if price <= 0:
+                    price = 0
+                lockWeather.release()
 
-        # Price calculation
-        stockvar = stock-stockbuffer
-        lockWeather.acquire()
-        price = 0.9 * price + weatherTemp.value*(-0.5) + stockvar/1000 + (20 * war + 13 * tension + 8 * carbon + 17 * crisis)
-        if price <= 0:
-            price = 0.5
-        lockWeather.release()
+                print(tour.decode())
 
-        print("The current price is ", round(price, 2), "€/Wh")
-        print("The temperature is ", round(weatherTemp.value, 1), "°C\n")
-        # print("Stop is ", stop)
+                print("Variation of stock is ", stockvarbuffer)
+                print("The current price is ", round(price, 4), "€/kWh")
+                print("The temperature is ", round(weatherTemp.value, 1), "°C\n")
+                print("price:", price, "temperature:", weatherTemp.value, "war:", war, "tension:", tension, "carbon:",
+                      carbon, "crisis:", crisis)
+            except sysv_ipc.BusyError:
+                pass
+
+
         if stop:
             break
 

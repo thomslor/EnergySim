@@ -132,6 +132,11 @@ def maison(InitProd, ConsoRate, SalePol, mqhome, mqmarket, exchange):  # Home pr
         # Modification of each home's values + lap incrementation
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
+
+        cond2 = b.wait()
+        if cond2 == 0:
+            numTour = "Tour %d" % i
+            mqmarket.send(numTour.encode(), type=3)
         i += 1
 
 
@@ -166,7 +171,7 @@ if __name__ == "__main__":
         InitProd = random.randrange(100, 1000, 100)
         ConsoRate = random.randrange(100, 1000, 100)
         # 0 to Always give away, 1 to Always sell, 2 to Sell if no takers
-        SalePol = 0 #random.randrange(0, 3, 1)
+        SalePol = random.randrange(0, 3, 1)
         p = multiprocessing.Process(target=maison, args=(InitProd, ConsoRate, SalePol, mqhome, mqmarket, homeExchange))
         p.start()
         print("PID ", p.pid)
